@@ -60,7 +60,7 @@ docs/
 
 ### Prerequisites
 
-- Node.js 18+ (tested with Node 22)
+- Node.js 18+ (tested with Node 24)
 - npm
 
 ### Install Dependencies

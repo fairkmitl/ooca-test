@@ -5,6 +5,7 @@ import ProductCard from "@/components/ProductCard";
 import MemberCardInput from "@/components/MemberCardInput";
 import CalculationSummary from "@/components/CalculationSummary";
 import ErrorMessage from "@/components/ErrorMessage";
+import { fetchProducts, calculateOrder } from "@/lib/api";
 import type { Product, CalculateResponse } from "@/lib/types";
 
 export default function HomePage() {
@@ -16,9 +17,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/products")
-      .then((res) => res.json())
-      .then((data: Product[]) => {
+    fetchProducts()
+      .then((data) => {
         setProducts(data);
         const initial: Record<string, number> = {};
         for (const p of data) {
@@ -52,24 +52,13 @@ export default function HomePage() {
     }
 
     try {
-      const res = await fetch("/api/calculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items,
-          memberCardNumber: memberCard.trim() || undefined,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        setError(data.error || "Calculation failed");
-      } else {
-        setResult(data);
-      }
-    } catch {
-      setError("Network error. Please try again.");
+      const data = await calculateOrder(
+        items,
+        memberCard.trim() || undefined
+      );
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Calculation failed");
     } finally {
       setLoading(false);
     }
@@ -83,14 +72,11 @@ export default function HomePage() {
   const hasItems = Object.values(quantities).some((qty) => qty > 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-8">
-          Food Store Calculator
-        </h1>
+    <div className="page-container">
+      <div className="page-content">
+        <h1 className="page-title">Food Store Calculator</h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left side: Product list and inputs */}
+        <div className="page-grid">
           <div className="space-y-3">
             {products.map((product) => (
               <ProductCard
@@ -107,13 +93,12 @@ export default function HomePage() {
               type="button"
               onClick={handleCalculate}
               disabled={loading || !hasItems}
-              className="w-full mt-4 py-3 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="btn-primary mt-4"
             >
               {loading ? "Calculating..." : "Calculate"}
             </button>
           </div>
 
-          {/* Right side: Results */}
           <div className="space-y-4">
             {error && <ErrorMessage message={error} />}
 
@@ -123,7 +108,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={handleRecalculate}
-                  className="w-full py-2.5 bg-blue-400 text-white font-medium rounded-xl hover:bg-blue-500 transition-colors"
+                  className="btn-secondary"
                 >
                   Recalculate
                 </button>
@@ -131,7 +116,7 @@ export default function HomePage() {
             )}
 
             {!result && !error && (
-              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+              <div className="placeholder-text">
                 Add items and click Calculate to see the summary.
               </div>
             )}
