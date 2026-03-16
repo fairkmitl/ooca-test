@@ -44,6 +44,9 @@ prisma/
 tests/
 ├── pricing.test.ts               # Unit tests for pricing logic
 └── redSetRestriction.test.ts     # Unit tests for Red set restriction
+
+docs/
+└── test-case-report.md           # Full test case matrix for reviewers
 ```
 
 ### Design Decisions
@@ -122,13 +125,48 @@ npm test
 npm run test:watch
 ```
 
-### Run tests with coverage report
+### Run tests with coverage
 
 ```bash
 npm run test:coverage
 ```
 
-Coverage report is generated in the `coverage/` directory. Open `coverage/index.html` in a browser for the HTML report.
+This generates:
+- **Terminal summary** — inline text + text-summary reporters
+- **HTML report** — open `coverage/index.html` in a browser
+- **LCOV data** — `coverage/lcov.info` for CI integration
+
+On macOS you can run `npm run test:coverage:open` to generate the report and open it in one step.
+
+### Coverage scope
+
+Coverage is measured over the pure business-logic modules:
+
+| File | Included | Reason |
+|------|----------|--------|
+| `src/lib/services/pricing.ts` | Yes | Core calculation logic |
+| `src/lib/services/redSetRestriction.ts` | Yes | Red set cooldown logic |
+| `src/lib/constants.ts` | Yes | Business rule constants |
+| `src/lib/services/memberValidation.ts` | No | Database-dependent (integration concern) |
+| `src/lib/db.ts` | No | Prisma infrastructure |
+| `src/lib/types.ts` | No | Type-only, no runtime code |
+
+Minimum thresholds enforced: 80% for statements, branches, functions, and lines.
+
+### Test case report
+
+A detailed, reviewer-friendly test case matrix is available at:
+
+> [`docs/test-case-report.md`](docs/test-case-report.md)
+
+It covers 39 automated test cases and 6 additional API-level cases, organized by category:
+- Subtotal calculation
+- Pair discount rules
+- Member card discount
+- Full calculation (integration)
+- Red set restriction
+- Red set detection
+- API / validation edge cases
 
 ## API Endpoint Summary
 
@@ -237,27 +275,20 @@ Every successful calculation via `POST /api/calculate` records an order in the d
 
 ## Test Case Matrix
 
-| # | Scenario | Items | Member | Expected Behavior |
-|---|----------|-------|--------|-------------------|
-| 1 | No discount, single item | Red ×1 | — | Total = 50, no discounts |
-| 2 | No discount, multiple items | Red ×1, Blue ×1 | — | Total = 80, no discounts |
-| 3 | Orange pair discount (×2) | Orange ×2 | — | Subtotal 240, pair -12, final 228 |
-| 4 | Pink pair discount (×4, two pairs) | Pink ×4 | — | Subtotal 320, pair -16, final 304 |
-| 5 | Green pair discount (×3, one pair + leftover) | Green ×3 | — | Subtotal 120, pair -4, final 116 |
-| 6 | Orange odd leftover (×5, two pairs) | Orange ×5 | — | Subtotal 600, pair -24, final 576 |
-| 7 | Multiple eligible items | Orange ×2, Pink ×2, Green ×2 | — | Pair discounts: 12+8+4=24 |
-| 8 | Member discount only (valid card) | Red ×1, Blue ×1 | MEMBER001 | Subtotal 80, member -8, final 72 |
-| 9 | Invalid member card | Blue ×1 | INVALID | memberCardValid=false, no discount |
-| 10 | Inactive member card | Blue ×1 | MEMBER003 | memberCardValid=false, no discount |
-| 11 | Pair discount + member discount | Orange ×2, Red ×1 | MEMBER001 | Sub 290, pair -12, member -27.8, final 250.2 |
-| 12 | All items, all discounts | Orange ×2, Pink ×2, Green ×2, others ×2 | MEMBER001 | Full calculation with all discount types |
-| 13 | Red set — first order allowed | Red ×1 | — | Success |
-| 14 | Red set — second order within 1hr blocked | Red ×1 (after #13) | — | 409 error |
-| 15 | Order without Red set — unaffected | Blue ×1 (after #13) | — | Success regardless of Red set cooldown |
-| 16 | Red set — allowed after 1 hour | Red ×1 (>1hr after last) | — | Success |
-| 17 | Empty cart | (all quantities 0) | — | 400 error |
-| 18 | Zero-quantity items filtered | Red ×0, Blue ×2 | — | Only Blue counted, total 60 |
-| 19 | Unknown product code ignored | unknown ×5, Red ×1 | — | Only Red counted, total 50 |
-| 20 | No member card provided | Any | — | memberCardValid=null |
-| 21 | Red set exactly at 1-hour boundary | Red ×1 (exactly 60 min) | — | Allowed (>= 1hr) |
-| 22 | Red set at 59m59s | Red ×1 (59m59s after) | — | Blocked |
+A quick overview of key scenarios. For the full matrix with 39+ categorized test cases, see [`docs/test-case-report.md`](docs/test-case-report.md).
+
+| # | Category | Scenario | Expected |
+|---|----------|----------|----------|
+| 1 | Subtotal | Single item Red ×1 | Total = 50 |
+| 2 | Pair discount | Orange ×2 (one pair) | Pair -12, final 228 |
+| 3 | Pair discount | Pink ×4 (two pairs) | Pair -16, final 304 |
+| 4 | Pair discount | Green ×3 (pair + leftover) | Pair -4, final 116 |
+| 5 | Pair discount | Orange ×5 (two pairs + leftover) | Pair -24, final 576 |
+| 6 | Member | Valid card, no pairs | 10% off subtotal |
+| 7 | Member | Invalid card | No discount, warning |
+| 8 | Combined | Pairs + member discount | Pair discounts first, then 10% member |
+| 9 | Red set | First order | Allowed |
+| 10 | Red set | Second order < 1 hour | 409 rejected |
+| 11 | Red set | Order after 1 hour | Allowed |
+| 12 | Validation | Empty cart | 400 error |
+| 13 | Validation | Unknown product code | Ignored silently |

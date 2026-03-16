@@ -12,7 +12,8 @@
     "db:setup": "prisma migrate dev && tsx prisma/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:open": "vitest run --coverage && open coverage/index.html"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.5.0",
