@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Product {
+  id    Int    @id @default(autoincrement())
+  code  String @unique
+  name  String
+  price Float
+}
+
+model Member {
+  id         Int     @id @default(autoincrement())
+  cardNumber String  @unique
+  name       String
+  isActive   Boolean @default(true)
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  hasRedSet Boolean
+  summary   String
+}
