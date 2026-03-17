@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:coverage:open": "vitest run --coverage && open coverage/index.html"
+    "test:coverage:open": "vitest run --coverage && npx open-cli coverage/index.html"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.5.0",

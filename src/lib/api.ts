@@ -3,7 +3,8 @@ import type { Product, OrderItem, CalculateResponse } from "@/lib/types";
 export async function fetchProducts(): Promise<Product[]> {
   const res = await fetch("/api/products");
   if (!res.ok) throw new Error("Failed to load products");
-  return res.json();
+  const json = await res.json();
+  return json.data;
 }
 
 export async function calculateOrder(

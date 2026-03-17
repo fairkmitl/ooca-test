@@ -136,7 +136,7 @@ This generates:
 - **HTML report** — open `coverage/index.html` in a browser
 - **LCOV data** — `coverage/lcov.info` for CI integration
 
-On macOS you can run `npm run test:coverage:open` to generate the report and open it in one step.
+Run `npm run test:coverage:open` to generate the report and open it in your browser in one step (works on macOS, Linux, and Windows).
 
 ### Coverage scope
 
