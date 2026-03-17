@@ -29,11 +29,13 @@ src/
 ├── lib/
 │   ├── types.ts                  # Shared TypeScript types
 │   ├── constants.ts              # Business rule constants
+│   ├── api.ts                    # Frontend API client functions
 │   ├── db.ts                     # Prisma client singleton
 │   └── services/
-│       ├── pricing.ts            # Calculation and discount logic
-│       ├── redSetRestriction.ts  # Red set 1-hour restriction
-│       └── memberValidation.ts   # Member card validation
+│       ├── pricing.ts            # Pure calculation and discount logic
+│       ├── redSetRestriction.ts  # Red set 1-hour restriction logic
+│       ├── memberValidation.ts   # Member card DB validation
+│       └── orderService.ts       # Order processing orchestration
 └── generated/prisma/             # Prisma generated client (gitignored)
 
 prisma/
@@ -52,9 +54,9 @@ docs/
 ### Design Decisions
 
 - **Prisma with better-sqlite3 adapter**: Prisma 7 requires driver adapters. The better-sqlite3 adapter provides synchronous SQLite access which is ideal for a local development setup.
-- **Calculation logic extracted into pure services**: `pricing.ts` and `redSetRestriction.ts` are pure functions with no database dependencies, making them easy to test independently.
-- **Member validation as a separate service**: `memberValidation.ts` handles database interaction for member lookups, keeping it separate from the pure calculation logic.
-- **Constants in a single file**: All magic numbers (discount rates, cooldown period, eligible product codes) are centralized in `constants.ts`.
+- **Pure services vs. orchestration**: `pricing.ts` and `redSetRestriction.ts` are pure functions with no database dependencies, making them easy to unit test. `orderService.ts` orchestrates the full order flow (red set check, product loading, member validation, calculation, order recording), keeping the route handler thin and focused on HTTP concerns only.
+- **API client separated from components**: `api.ts` encapsulates all fetch calls so UI components don't contain data-fetching logic.
+- **Constants in a single file**: All business rule values (discount rates, cooldown period, eligible product codes, restricted product code) are centralized in `constants.ts`.
 
 ## Setup Instructions
 
@@ -147,6 +149,7 @@ Coverage is measured over the pure business-logic modules:
 | `src/lib/services/pricing.ts` | Yes | Core calculation logic |
 | `src/lib/services/redSetRestriction.ts` | Yes | Red set cooldown logic |
 | `src/lib/constants.ts` | Yes | Business rule constants |
+| `src/lib/services/orderService.ts` | No | Orchestration layer — depends on database |
 | `src/lib/services/memberValidation.ts` | No | Database-dependent (integration concern) |
 | `src/lib/db.ts` | No | Prisma infrastructure |
 | `src/lib/types.ts` | No | Type-only, no runtime code |
@@ -159,7 +162,7 @@ A detailed, reviewer-friendly test case matrix is available at:
 
 > [`docs/test-case-report.md`](docs/test-case-report.md)
 
-It covers 39 automated test cases and 6 additional API-level cases, organized by category:
+It covers 40 automated test cases and 6 additional API-level cases, organized by category:
 - Subtotal calculation
 - Pair discount rules
 - Member card discount
@@ -172,15 +175,28 @@ It covers 39 automated test cases and 6 additional API-level cases, organized by
 
 ### `GET /api/products`
 
-Returns all available products from the database.
+Returns products from the database with optional sorting and pagination.
+
+**Query parameters (all optional):**
+
+| Param | Type | Default | Example |
+|-------|------|---------|---------|
+| `sortBy` | `id` \| `name` \| `price` \| `code` | `id` | `?sortBy=price` |
+| `sortOrder` | `asc` \| `desc` | `asc` | `?sortOrder=desc` |
+| `limit` | non-negative int | `20` | `?limit=10` |
+| `offset` | non-negative int | `0` | `?offset=20` |
 
 **Response:**
 ```json
-[
-  { "id": 1, "code": "red", "name": "Red set", "price": 50 },
-  { "id": 2, "code": "green", "name": "Green set", "price": 40 },
-  ...
-]
+{
+  "data": [
+    { "id": 1, "code": "red", "name": "Red set", "price": 50 },
+    { "id": 2, "code": "green", "name": "Green set", "price": 40 }
+  ],
+  "total": 7,
+  "limit": 20,
+  "offset": 0
+}
 ```
 
 ### `POST /api/calculate`
@@ -275,7 +291,7 @@ Every successful calculation via `POST /api/calculate` records an order in the d
 
 ## Test Case Matrix
 
-A quick overview of key scenarios. For the full matrix with 39+ categorized test cases, see [`docs/test-case-report.md`](docs/test-case-report.md).
+A quick overview of key scenarios. For the full matrix with 40+ categorized test cases, see [`docs/test-case-report.md`](docs/test-case-report.md).
 
 | # | Category | Scenario | Expected |
 |---|----------|----------|----------|
