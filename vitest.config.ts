@@ -18,6 +18,7 @@ export default defineConfig({
         "src/lib/db.ts",
         "src/lib/types.ts",
         "src/lib/services/memberValidation.ts",
+        "src/lib/services/orderService.ts",
         "node_modules/**",
       ],
       thresholds: {

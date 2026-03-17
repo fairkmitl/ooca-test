@@ -1,4 +1,4 @@
-import { RED_SET_COOLDOWN_MS } from "@/lib/constants";
+import { RED_SET_COOLDOWN_MS, RED_SET_CODE } from "@/lib/constants";
 
 /**
  * Checks whether a new Red set order is allowed based on the
@@ -16,5 +16,7 @@ export function isRedSetAllowed(
 export function hasRedSetInOrder(
   items: { productCode: string; quantity: number }[]
 ): boolean {
-  return items.some((item) => item.productCode === "red" && item.quantity > 0);
+  return items.some(
+    (item) => item.productCode === RED_SET_CODE && item.quantity > 0
+  );
 }

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { calculateTotal } from "@/lib/services/pricing";
-import { hasRedSetInOrder, isRedSetAllowed } from "@/lib/services/redSetRestriction";
-import { validateMemberCard } from "@/lib/services/memberValidation";
-import type { CalculateRequest, Product } from "@/lib/types";
+import { processOrder } from "@/lib/services/orderService";
+import type { CalculateRequest } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,58 +32,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Red set restriction check
-    if (hasRedSetInOrder(items)) {
-      const lastRedOrder = await prisma.order.findFirst({
-        where: { hasRedSet: true },
-        orderBy: { createdAt: "desc" },
-      });
+    const result = await processOrder({ items, memberCardNumber });
 
-      if (!isRedSetAllowed(lastRedOrder?.createdAt ?? null)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "Red set is temporarily unavailable. Only one Red set order is allowed per hour. Please try again later.",
-          },
-          { status: 409 }
-        );
-      }
+    if (!result.success) {
+      return NextResponse.json(result, { status: 409 });
     }
-
-    // Load products from database
-    const products = await prisma.product.findMany();
-    const productMap = new Map<string, Product>(
-      products.map((p) => [p.code, p])
-    );
-
-    // Validate member card
-    const memberCardProvided = !!memberCardNumber && memberCardNumber.trim() !== "";
-    let isMemberValid = false;
-    if (memberCardProvided) {
-      isMemberValid = await validateMemberCard(memberCardNumber);
-    }
-
-    // Calculate totals
-    const result = calculateTotal(items, productMap, isMemberValid);
-
-    if (memberCardProvided) {
-      result.memberCardValid = isMemberValid;
-    } else {
-      result.memberCardValid = null;
-    }
-
-    // Record the order (for Red set restriction tracking)
-    await prisma.order.create({
-      data: {
-        hasRedSet: hasRedSetInOrder(items),
-        summary: JSON.stringify({
-          items: activeItems,
-          memberCardNumber: memberCardNumber || null,
-          finalTotal: result.finalTotal,
-        }),
-      },
-    });
 
     return NextResponse.json(result);
   } catch (error) {

@@ -57,7 +57,7 @@ export function calculateMemberDiscount(
 export function calculateTotal(
   items: OrderItem[],
   productMap: Map<string, Product>,
-  isMemberValid: boolean
+  memberCardValid: boolean | null
 ): CalculateResponse {
   const validItems = items.filter(
     (item) => item.quantity > 0 && productMap.has(item.productCode)
@@ -69,7 +69,10 @@ export function calculateTotal(
     itemDiscounts.reduce((sum, d) => sum + d.discountAmount, 0)
   );
   const subtotalAfterPairDiscounts = roundToTwo(totalBeforeDiscount - totalItemDiscount);
-  const memberDiscount = calculateMemberDiscount(subtotalAfterPairDiscounts, isMemberValid);
+  const memberDiscount = calculateMemberDiscount(
+    subtotalAfterPairDiscounts,
+    memberCardValid === true
+  );
   const finalTotal = roundToTwo(subtotalAfterPairDiscounts - memberDiscount);
 
   return {
@@ -78,7 +81,7 @@ export function calculateTotal(
     itemDiscounts,
     totalItemDiscount,
     memberDiscount,
-    memberCardValid: isMemberValid,
+    memberCardValid,
     finalTotal,
   };
 }

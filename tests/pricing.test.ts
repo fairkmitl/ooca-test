@@ -158,20 +158,29 @@ describe("calculateTotal (integration)", () => {
 
   it("no discount — single non-eligible item", () => {
     const items: OrderItem[] = [{ productCode: "red", quantity: 1 }];
-    const result = calculateTotal(items, productMap, false);
+    const result = calculateTotal(items, productMap, null);
     expect(result.totalBeforeDiscount).toBe(50);
     expect(result.totalItemDiscount).toBe(0);
     expect(result.memberDiscount).toBe(0);
+    expect(result.memberCardValid).toBeNull();
     expect(result.finalTotal).toBe(50);
   });
 
   it("pair discount only — orange x2", () => {
     const items: OrderItem[] = [{ productCode: "orange", quantity: 2 }];
-    const result = calculateTotal(items, productMap, false);
+    const result = calculateTotal(items, productMap, null);
     expect(result.totalBeforeDiscount).toBe(240);
     expect(result.totalItemDiscount).toBe(12);
     expect(result.memberDiscount).toBe(0);
     expect(result.finalTotal).toBe(228);
+  });
+
+  it("invalid member card — no discount applied", () => {
+    const items: OrderItem[] = [{ productCode: "red", quantity: 1 }];
+    const result = calculateTotal(items, productMap, false);
+    expect(result.memberCardValid).toBe(false);
+    expect(result.memberDiscount).toBe(0);
+    expect(result.finalTotal).toBe(50);
   });
 
   it("member discount only — no eligible pairs", () => {
@@ -226,7 +235,7 @@ describe("calculateTotal (integration)", () => {
       { productCode: "red", quantity: 0 },
       { productCode: "blue", quantity: 2 },
     ];
-    const result = calculateTotal(items, productMap, false);
+    const result = calculateTotal(items, productMap, null);
     expect(result.totalBeforeDiscount).toBe(60);
     expect(result.finalTotal).toBe(60);
   });
@@ -236,14 +245,14 @@ describe("calculateTotal (integration)", () => {
       { productCode: "unknown", quantity: 5 },
       { productCode: "red", quantity: 1 },
     ];
-    const result = calculateTotal(items, productMap, false);
+    const result = calculateTotal(items, productMap, null);
     expect(result.totalBeforeDiscount).toBe(50);
     expect(result.finalTotal).toBe(50);
   });
 
   it("empty cart returns zeros", () => {
     const items: OrderItem[] = [];
-    const result = calculateTotal(items, productMap, false);
+    const result = calculateTotal(items, productMap, null);
     expect(result.totalBeforeDiscount).toBe(0);
     expect(result.totalItemDiscount).toBe(0);
     expect(result.memberDiscount).toBe(0);
@@ -255,7 +264,7 @@ describe("calculateTotal (integration)", () => {
       { productCode: "red", quantity: 0 },
       { productCode: "green", quantity: 0 },
     ];
-    const result = calculateTotal(items, productMap, false);
+    const result = calculateTotal(items, productMap, null);
     expect(result.totalBeforeDiscount).toBe(0);
     expect(result.finalTotal).toBe(0);
   });
@@ -284,7 +293,7 @@ describe("calculateTotal (integration)", () => {
 
   it("success flag is true", () => {
     const items: OrderItem[] = [{ productCode: "red", quantity: 1 }];
-    const result = calculateTotal(items, productMap, false);
+    const result = calculateTotal(items, productMap, null);
     expect(result.success).toBe(true);
   });
 });
